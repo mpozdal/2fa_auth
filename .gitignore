@@ -6,6 +6,7 @@
 # Zawierają skompilowany kod (.dll, .exe) i pliki pośrednie.
 **/[Bb]in/
 **/[Oo]bj/
+**/Properties
 
 # Pliki użytkownika i cache Visual Studio
 # Przechowują ustawienia okien, otwarte pliki itp. (specyficzne dla Twojego PC)
