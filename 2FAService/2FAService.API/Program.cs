@@ -13,14 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+builder.Services.AddDbContext<IAppDbContext, AppDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDataProtection();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
-
-builder.Services.AddScoped<IAppDbContext, AppDbContext>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorAuthService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ITwoFactorSettingsRepository, TwoFactorSettingsRepository>();

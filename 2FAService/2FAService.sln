@@ -2,9 +2,7 @@
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2FAService", "2FAService\2FAService.csproj", "{F91B7B75-051E-8104-B377-22C23812AFDA}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2FAService", "2FAService.API\2FAService.csproj", "{9058C441-4D2F-43B1-9E0B-061CB067BEFB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2FAService.API", "2FAService.API\2FAService.API.csproj", "{9058C441-4D2F-43B1-9E0B-061CB067BEFB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2FAService.Application", "2FAService.Application\2FAService.Application.csproj", "{93E0A363-1E9A-4746-AA3D-13A84BE99E26}"
 EndProject
