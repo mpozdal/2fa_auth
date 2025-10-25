@@ -6,7 +6,6 @@ using TwoFactorService.Application.Interfaces;
 
 namespace TwoFactorService.API.Controllers
 {
-    [Authorize]
     [ApiController]
     [Route("api/2fa")]
     [Produces("application/json")]

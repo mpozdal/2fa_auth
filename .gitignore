@@ -1,7 +1,60 @@
-/*/bin
-/*/obj
-/*/Properties
-/*/Migrations
-/*/src
-/*/appsettings.Development.json
+# ###########################
+# ## .NET / Visual Studio ##
+# ###########################
 
+# Pliki generowane przez kompilator (NAJWAŻNIEJSZE)
+# Zawierają skompilowany kod (.dll, .exe) i pliki pośrednie.
+**/[Bb]in/
+**/[Oo]bj/
+
+# Pliki użytkownika i cache Visual Studio
+# Przechowują ustawienia okien, otwarte pliki itp. (specyficzne dla Twojego PC)
+.vs/
+*.suo
+*.user
+
+# Pliki użytkownika Rider (JetBrains)
+.idea/
+*.DotSettings.user
+
+# Pliki użytkownika VS Code (opcjonalne, ale zalecane)
+# Czasem pliki launch.json i tasks.json są współdzielone,
+# ale resztę lepiej ignorować.
+.vscode/
+
+# Pliki generowane przez EF Core (jeśli używasz LocalDB)
+*.mdf
+*.ldf
+
+# Pliki z wynikami testów
+*.trx
+*.TestResult.xml
+TestResults/
+
+# Logi i pliki tymczasowe
+*.log
+*.tmp
+*.temp
+
+# Pliki pakietów NuGet (starszy styl)
+packages/
+*.nupkg
+
+# ###########################
+# ## System Operacyjny     ##
+# ###########################
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Pliki tymczasowe generowane przez Git
+.gitattributes
+.gitkeep
+*.orig
