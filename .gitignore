@@ -1,6 +1,7 @@
-/2FAService/bin
-/2FAService/obj
-/2FAService/Properties
-/2FAService/Migrations
-/2FAService/src
+/*/bin
+/*/obj
+/*/Properties
+/*/Migrations
+/*/src
+/*/appsettings.Development.json
 
