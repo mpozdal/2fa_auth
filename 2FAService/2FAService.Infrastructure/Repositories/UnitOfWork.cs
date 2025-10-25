@@ -4,20 +4,15 @@ using TwoFactorService.Infrastructure.Persistence.Repositories;
 
 namespace TwoFactorService.Infrastructure.Persistence
 {
-    public class UnitOfWork : IUnitOfWork
+    public class UnitOfWork(
+        IAppDbContext context,
+        ITwoFactorSettingsRepository settingsRepository,
+        IRecoveryCodeRepository recoveryCodeRepository) : IUnitOfWork
     {
-        private readonly IAppDbContext _context;
+        private readonly IAppDbContext _context = context;
 
-        public ITwoFactorSettingsRepository Settings { get; }
-        public IRecoveryCodeRepository RecoveryCodes { get; }
-
-        public UnitOfWork(IAppDbContext context)
-        {
-            _context = context;
-
-            Settings = new TwoFactorSettingsRepository(_context);
-            RecoveryCodes = new RecoveryCodeRepository(_context);
-        }
+        public ITwoFactorSettingsRepository Settings { get; } = settingsRepository;
+        public IRecoveryCodeRepository RecoveryCodes { get; } = recoveryCodeRepository;
 
         public async Task<int> CompleteAsync(CancellationToken cancellationToken = default)
         {

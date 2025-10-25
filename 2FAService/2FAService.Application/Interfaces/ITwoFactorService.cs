@@ -4,7 +4,10 @@ namespace TwoFactorService.Application.Interfaces
 {
     public interface ITwoFactorService
     {
-        Task<SetupResponse> GenerateSetupAsync(string userId, string issuerName);
+        Task<ServiceResult<SetupResponse>> GenerateSetupAsync(string userId, string issuerName);
+        Task<ServiceResult<SetupVerificationResponse>> VerifyAndEnableAsync(string userId, string code);
+        Task<ServiceResult> VerifyLoginAsync(string userId, string code);
+        Task<ServiceResult> Disable2FAAsync(string userId);
     }
 }
 
