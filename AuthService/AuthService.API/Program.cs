@@ -2,19 +2,80 @@ using AuthService.Infrastructure.Persistence;
 using AuthService.Application.Services;
 using AuthService.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using AuthService.Application.Helpers;
+using AuthService.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using AuthService.Infrastructure.HttpClients;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        options.Password.RequireDigit = true;
+        options.Password.RequiredLength = 8;
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddEntityFrameworkStores<AuthDbContext>()
+    .AddDefaultTokenProviders();
+
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
 builder.Services.AddControllers();
 
+builder.Services.AddHttpClient<ITwoFactorApiClient, TwoFactorApiClient>(client =>
+{
+    string? serviceUrl = builder.Configuration["ServiceUrls:TwoFactorService"];
+
+    if (string.IsNullOrEmpty(serviceUrl))
+    {
+        throw new InvalidOperationException("TwoFactorService URL not configured in appsettings.json");
+    }
+
+    client.BaseAddress = new Uri(serviceUrl);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = builder.Configuration["Jwt:Authority"];
+
+        options.Audience = builder.Configuration["Jwt:Audience"];
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.MapSwagger();
+
+app.UseAuthentication();
+
+app.UseAuthorization();
 
 app.MapControllers();
 

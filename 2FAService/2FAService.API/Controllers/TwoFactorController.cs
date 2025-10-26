@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -7,6 +8,7 @@ using TwoFactorService.Application.Interfaces;
 namespace TwoFactorService.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/2fa")]
     [Produces("application/json")]
     public class TwoFactorController(ITwoFactorService service) : ControllerBase
@@ -16,13 +18,15 @@ namespace TwoFactorService.API.Controllers
         [HttpPost("setup")]
         [ProducesResponseType(typeof(ServiceResult<SetupResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<IActionResult> Setup([FromBody] SetupRequest request)
+        public async Task<IActionResult> Setup()
         {
-            var setupInfo = await _service.GenerateSetupAsync(request.UserId, "MyIssuer");
+            var userId = GetUserIdFromToken();
+
+            var setupInfo = await _service.GenerateSetupAsync(userId, "MyIssuer");
 
             if (!setupInfo.IsSuccess)
             {
-                return UnprocessableEntity(setupInfo.ErrorCode);
+                return UnprocessableEntity(setupInfo);
             }
 
             return Ok(setupInfo);
@@ -35,26 +39,12 @@ namespace TwoFactorService.API.Controllers
         [EnableRateLimiting("bruteforce_2fa")]
         public async Task<IActionResult> Enable([FromBody] SetupVerificationRequest request)
         {
-            var verificationResponse = await _service.VerifyAndEnableAsync(request.UserId, request.Code);
+            var userId = GetUserIdFromToken();
+
+            var verificationResponse = await _service.VerifyAndEnableAsync(userId, request.Code);
             if (!verificationResponse.IsSuccess)
             {
-                return UnprocessableEntity(verificationResponse.ErrorCode);
-            }
-
-            return Ok(verificationResponse);
-        }
-
-        [HttpPost("verify-login")]
-        [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status422UnprocessableEntity)]
-        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-        [EnableRateLimiting("bruteforce_2fa")]
-        public async Task<IActionResult> Verify([FromBody] VerifyCodeRequest request)
-        {
-            var verificationResponse = await _service.VerifyLoginAsync(request.UserId, request.Code);
-            if (!verificationResponse.IsSuccess)
-            {
-                return UnprocessableEntity(verificationResponse.ErrorCode);
+                return UnprocessableEntity(verificationResponse);
             }
 
             return Ok(verificationResponse);
@@ -63,16 +53,27 @@ namespace TwoFactorService.API.Controllers
         [HttpDelete]
         [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ServiceResult), StatusCodes.Status422UnprocessableEntity)]
-        public async Task<IActionResult> Disable([FromBody] Disable2FARequest request)
+        public async Task<IActionResult> Disable()
         {
-            var response = await _service.Disable2FAAsync(request.UserId);
+            var userId = GetUserIdFromToken();
+
+            var response = await _service.Disable2FAAsync(userId);
             if (!response.IsSuccess)
             {
-                return UnprocessableEntity(response.ErrorCode);
+                return UnprocessableEntity(response);
             }
 
             return NoContent();
         }
 
+        private string GetUserIdFromToken()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new InvalidOperationException("User ID not found in token.");
+            }
+            return userId;
+        }
     }
 }
