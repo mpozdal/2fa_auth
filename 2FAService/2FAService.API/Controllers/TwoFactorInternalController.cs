@@ -27,6 +27,5 @@ namespace TwoFactorService.API.Controllers
 
             return Ok(verificationResponse);
         }
-
     }
 }

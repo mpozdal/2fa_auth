@@ -6,34 +6,40 @@ using TwoFactorService.Application.Contracts;
 
 namespace AuthService.Application.Services
 {
-    public class AuthenticationService(UserManager<ApplicationUser> userManager, IJwtTokenGenerator jwtTokenGenerator, ITwoFactorApiClient twoFactorApiClient) : IAuthenticationService
+    public class AuthenticationService(
+        UserManager<ApplicationUser> userManager,
+        IJwtTokenGenerator jwtTokenGenerator,
+        ITwoFactorApiClient twoFactorApiClient,
+        IRefreshTokenGenerator refreshTokenGenerator,
+        IRefreshTokenRepository refreshTokenRepository,
+        IUnitOfWork unitOfWork) : IAuthenticationService
     {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly IJwtTokenGenerator _jwtTokenGenerator = jwtTokenGenerator;
+        private readonly IRefreshTokenGenerator _refreshTokenGenerator = refreshTokenGenerator;
         private readonly ITwoFactorApiClient _twoFactorApiClient = twoFactorApiClient;
+        private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
+        private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
-
-        public async Task<ServiceResult> Verify2FAAsync(string userId, string code)
+        public async Task<ServiceResult<LoginResponse>> Verify2FAAsync(string userId, string code)
         {
-            var user = await _userManager.FindByEmailAsync(userId);
+            var user = await _userManager.FindByIdAsync(userId);
 
             if (user is null)
             {
-                return ServiceResult.Fail(AuthErrorCodes.InvalidCredentials);
+                return ServiceResult<LoginResponse>.Fail(AuthErrorCodes.InvalidCredentials);
             }
 
             var result = await _twoFactorApiClient.VerifyLoginCodeAsync(userId, code);
 
             if (!result.IsSuccess)
             {
-                return ServiceResult.Fail(AuthErrorCodes.Invalid2FA);
+                return ServiceResult<LoginResponse>.Fail(AuthErrorCodes.Invalid2FA);
             }
 
-            var roles = await _userManager.GetRolesAsync(user);
+             var response = await GenerateTokensAndSuccessResponseAsync(user);
 
-            var jsonWebToken = _jwtTokenGenerator.GenerateToken(user, roles);
-
-            return ServiceResult<LoginResponse>.Success(new LoginResponse(false, jsonWebToken));
+            return ServiceResult<LoginResponse>.Success(response);
         }
 
         public async Task<ServiceResult<LoginResponse>> LoginAsync(string email, string password)
@@ -45,16 +51,14 @@ namespace AuthService.Application.Services
                 return ServiceResult<LoginResponse>.Fail(AuthErrorCodes.InvalidCredentials);
             }
 
-            if(user.TwoFactorEnabled)
+            if (user.TwoFactorEnabled)
             {
-                return ServiceResult<LoginResponse>.Success(new LoginResponse(true, null));
+                return ServiceResult<LoginResponse>.Success(new LoginResponse(true, user.Id, null, null));
             }
 
-            var roles = await _userManager.GetRolesAsync(user);
+            var response = await GenerateTokensAndSuccessResponseAsync(user);
 
-            var jsonWebToken = _jwtTokenGenerator.GenerateToken(user, roles);
-
-            return ServiceResult<LoginResponse>.Success(new LoginResponse(false, jsonWebToken));
+            return ServiceResult<LoginResponse>.Success(response);
         }
 
         public async Task<ServiceResult> RegisterAsync(string email, string password)
@@ -74,12 +78,74 @@ namespace AuthService.Application.Services
 
             var result = await _userManager.CreateAsync(user, password);
 
-            if (result is null)
+            if (!result.Succeeded)
             {
                 return ServiceResult.Fail(AuthErrorCodes.ErrorCreatingUser);
             }
 
             return ServiceResult.Success();
+        }
+
+        public async Task<ServiceResult<LoginResponse>> RefreshAsync(string refreshToken)
+        {
+            var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+
+            if (storedToken is null || !storedToken.IsActive)
+            {
+                return ServiceResult<LoginResponse>.Fail(AuthErrorCodes.InvalidRefreshToken);
+            }
+
+            var user = await _userManager.FindByIdAsync(storedToken.UserId);
+
+            if (user is null)
+            {
+                return ServiceResult<LoginResponse>.Fail(AuthErrorCodes.UserNotFound);
+            }
+
+            storedToken.IsRevoked = true;
+            _refreshTokenRepository.Update(storedToken);
+
+            var newRefreshToken = _refreshTokenGenerator.GenerateToken(user.Id);
+
+            await _refreshTokenRepository.AddAsync(newRefreshToken);
+
+            var newJsonWebToken = _jwtTokenGenerator.GenerateToken(user, await _userManager.GetRolesAsync(user));
+
+            await _unitOfWork.CompleteAsync();
+
+            return ServiceResult<LoginResponse>.Success(new LoginResponse(false, user.Id, newJsonWebToken, newRefreshToken.Token));
+        }
+
+        public async Task<ServiceResult> RevokeAsync(string refreshToken)
+        {
+            var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+
+            if (storedToken is null || !storedToken.IsActive)
+            {
+                return ServiceResult.Fail(AuthErrorCodes.InvalidRefreshToken);
+            }
+
+            storedToken.IsRevoked = true;
+            _refreshTokenRepository.Update(storedToken);
+
+            await _unitOfWork.CompleteAsync();
+
+            return ServiceResult.Success();
+        }
+
+        private async Task<LoginResponse> GenerateTokensAndSuccessResponseAsync(ApplicationUser user)
+        {
+            var jsonWebToken = _jwtTokenGenerator.GenerateToken(user, await _userManager.GetRolesAsync(user));
+
+            _refreshTokenRepository.RemoveOldTokensForUser(user.Id);
+
+            var refreshToken = _refreshTokenGenerator.GenerateToken(user.Id);
+
+            await _refreshTokenRepository.AddAsync(refreshToken);
+
+            await _unitOfWork.CompleteAsync();
+
+            return new LoginResponse(false, user.Id, jsonWebToken, refreshToken.Token);
         }
     }
 }

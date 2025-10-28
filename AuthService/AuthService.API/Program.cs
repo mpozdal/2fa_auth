@@ -8,12 +8,22 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AuthService.Infrastructure.HttpClients;
+using AuthService.Infrastructure.Repositories;
+using AuthService.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// builder.WebHost.ConfigureKestrel(serverOptions =>
+// {
+//     serverOptions.Listen(System.Net.IPAddress.Loopback, 7011, listenOptions =>
+//     {
+//         listenOptions.UseHttps("localhost+2.p12", "changeit");
+//     });
+// });
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -28,7 +38,12 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+builder.Services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRespository>();
 
 builder.Services.AddControllers();
 

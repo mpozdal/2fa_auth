@@ -1,7 +1,7 @@
 namespace TwoFactorService.Application.Contracts
 {
     public record SetupResponse(
-        string UserId,
+        string Email,
         string ManualEntryKey,
         string QrCodeImageUrl
     );
@@ -9,8 +9,8 @@ namespace TwoFactorService.Application.Contracts
     public record SetupVerificationRequest(string Code);
     public record SetupVerificationResponse(List<string>? RecoveryCodes);
 
-    public record VerifyCodeRequest(string UserId, string Code);
+    public record VerifyCodeRequest(string Email, string Code);
 
-    public record Disable2FARequest(string UserId);
+    public record Disable2FARequest(string Email);
 }
 
