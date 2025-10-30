@@ -4,14 +4,18 @@ using TwoFactorService.Application.Contracts;
 using TwoFactorService.Application.Helpers;
 using TwoFactorService.Application.Interfaces;
 using TwoFactorService.Domain.Entities;
+using MassTransit;
+using Shared.Events;
 
 namespace TwoFactorService.Application.Services
 {
-    public class TwoFactorAuthService(IUnitOfWork unitOfWork, IDataProtectionProvider provider) : ITwoFactorService
+    public class TwoFactorAuthService(IUnitOfWork unitOfWork, IDataProtectionProvider provider, IPublishEndpoint publishEndpoint) : ITwoFactorService
     {
 
         private readonly IUnitOfWork _unitOfWork = unitOfWork;
         private readonly IDataProtector _protector = provider.CreateProtector("TwoFactorService.v1.Secrets");
+        private readonly IPublishEndpoint _publishEndpoint = publishEndpoint;
+
 
         public async Task<ServiceResult<SetupResponse>> GenerateSetupAsync(string userId, string issuerName)
         {
@@ -106,6 +110,10 @@ namespace TwoFactorService.Application.Services
 
             await _unitOfWork.CompleteAsync();
 
+            var @event = new User2FAEnabledEvent { UserId = userSetting.UserId };
+
+            await _publishEndpoint.Publish(@event);
+
             return ServiceResult<SetupVerificationResponse>.Success(new SetupVerificationResponse(plainTextRecoveryCodes));
         }
 
@@ -166,6 +174,10 @@ namespace TwoFactorService.Application.Services
             _unitOfWork.Settings.Delete(userSetting);
 
             await _unitOfWork.CompleteAsync();
+
+            var @event = new User2FAEnabledEvent { UserId = userSetting.UserId };
+
+            await _publishEndpoint.Publish(@event);
 
             return ServiceResult.Success();
         }

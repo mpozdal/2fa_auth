@@ -10,12 +10,12 @@ namespace AuthService.Infrastructure.HttpClients
     {
         private readonly HttpClient _httpClient = httpClient;
 
-        public async Task<ServiceResult> VerifyLoginCodeAsync(string email, string code)
+        public async Task<ServiceResult> VerifyLoginCodeAsync(string userId, string code)
         {
-            var requestBody = new Verify2FARequest(email, code);
+            var requestBody = new Verify2FARequest(userId, code);
 
             HttpResponseMessage response = await _httpClient.PostAsJsonAsync(
-                "api/2fa//internal/verify-login",
+                "api/2fa/internal/verify-login",
                 requestBody
             );
 

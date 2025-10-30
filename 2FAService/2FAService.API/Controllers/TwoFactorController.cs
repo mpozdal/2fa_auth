@@ -68,7 +68,8 @@ namespace TwoFactorService.API.Controllers
 
         private string GetUserIdFromToken()
         {
-            var userId = User.FindFirstValue(ClaimTypes.Email);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
             if (string.IsNullOrEmpty(userId))
             {
                 throw new InvalidOperationException("User ID not found in token.");

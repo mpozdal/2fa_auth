@@ -9,6 +9,7 @@ using System.Threading.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Text;
+using MassTransit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,9 +18,17 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<IAppDbContext, AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.AddMassTransit(config => {
+    config.UsingRabbitMq((context, cfg) => {
+        cfg.Host(builder.Configuration.GetValue<string>("RabbitMq:Host"), "/", h => {
+            h.Username(builder.Configuration.GetValue<string>("RabbitMq:Username")!);
+            h.Password(builder.Configuration.GetValue<string>("RabbitMq:Password")!);
+        });
+    });
+});
+
 builder.Services.AddSwaggerGen(options =>
 {
-    // Definiuje, jakiego typu zabezpieczenia używamy (JWT Bearer)
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",

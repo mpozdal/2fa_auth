@@ -10,12 +10,31 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AuthService.Infrastructure.HttpClients;
 using AuthService.Infrastructure.Repositories;
 using AuthService.Infrastructure.Data;
+using MassTransit;
+using AuthService.Application.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddMassTransit(config => {
+    config.AddConsumer<User2FAStatusConsumer>();
+
+    config.UsingRabbitMq((context, cfg) => {
+
+        cfg.Host(builder.Configuration.GetValue<string>("RabbitMq:Host"), "/", h =>
+        {
+            h.Username(builder.Configuration.GetValue<string>("RabbitMq:Username")!);
+            h.Password(builder.Configuration.GetValue<string>("RabbitMq:Password")!);
+        });
+
+        cfg.ReceiveEndpoint("auth-service-events", e => {
+            e.ConfigureConsumer<User2FAStatusConsumer>(context);
+        });
+    });
+});
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(connectionString));

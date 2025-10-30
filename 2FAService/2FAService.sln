@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2FAService.Domain", "2FASer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "2FAService.Infrastructure", "2FAService.Infrastructure\2FAService.Infrastructure.csproj", "{8618659D-AB74-4C4E-BAD5-FCF02BF7903E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "..\Shared\Shared.csproj", "{60D60317-28DF-4C55-9EA4-7B40C73FC45A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,5 +38,9 @@ Global
 		{8618659D-AB74-4C4E-BAD5-FCF02BF7903E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8618659D-AB74-4C4E-BAD5-FCF02BF7903E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8618659D-AB74-4C4E-BAD5-FCF02BF7903E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60D60317-28DF-4C55-9EA4-7B40C73FC45A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60D60317-28DF-4C55-9EA4-7B40C73FC45A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60D60317-28DF-4C55-9EA4-7B40C73FC45A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60D60317-28DF-4C55-9EA4-7B40C73FC45A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
