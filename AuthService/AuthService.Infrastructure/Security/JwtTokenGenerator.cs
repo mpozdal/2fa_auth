@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
-namespace AuthService.Application.Helpers
+namespace AuthService.Infrastructure.Security
 {
     public class JwtTokenGenerator(IConfiguration configuration): IJwtTokenGenerator
     {

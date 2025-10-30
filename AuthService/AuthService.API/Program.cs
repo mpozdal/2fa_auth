@@ -2,7 +2,7 @@ using AuthService.Infrastructure.Persistence;
 using AuthService.Application.Services;
 using AuthService.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using AuthService.Application.Helpers;
+using AuthService.Infrastructure.Security;
 using AuthService.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -16,14 +16,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// builder.WebHost.ConfigureKestrel(serverOptions =>
-// {
-//     serverOptions.Listen(System.Net.IPAddress.Loopback, 7011, listenOptions =>
-//     {
-//         listenOptions.UseHttps("localhost+2.p12", "changeit");
-//     });
-// });
 
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseNpgsql(connectionString));

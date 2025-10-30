@@ -5,5 +5,6 @@ namespace AuthService.Application.Interfaces
     public interface IRefreshTokenGenerator
     {
         RefreshToken GenerateToken(string userId);
+        string HashToken(string token);
     }
 }

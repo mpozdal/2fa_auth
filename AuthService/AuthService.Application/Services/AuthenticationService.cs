@@ -37,7 +37,9 @@ namespace AuthService.Application.Services
                 return ServiceResult<LoginResponse>.Fail(AuthErrorCodes.Invalid2FA);
             }
 
-             var response = await GenerateTokensAndSuccessResponseAsync(user);
+            var response = await GenerateTokensAndSuccessResponseAsync(user);
+
+            await _unitOfWork.CompleteAsync();
 
             return ServiceResult<LoginResponse>.Success(response);
         }
@@ -57,6 +59,8 @@ namespace AuthService.Application.Services
             }
 
             var response = await GenerateTokensAndSuccessResponseAsync(user);
+
+            await _unitOfWork.CompleteAsync();
 
             return ServiceResult<LoginResponse>.Success(response);
         }
@@ -88,7 +92,9 @@ namespace AuthService.Application.Services
 
         public async Task<ServiceResult<LoginResponse>> RefreshAsync(string refreshToken)
         {
-            var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+            var hashedRefreshToken = _refreshTokenGenerator.HashToken(refreshToken);
+
+            var storedToken = await _refreshTokenRepository.GetByTokenAsync(hashedRefreshToken);
 
             if (storedToken is null || !storedToken.IsActive)
             {
@@ -107,18 +113,24 @@ namespace AuthService.Application.Services
 
             var newRefreshToken = _refreshTokenGenerator.GenerateToken(user.Id);
 
+            var plainTextRefreshToken = newRefreshToken.Token;
+
+            newRefreshToken.Token = _refreshTokenGenerator.HashToken(plainTextRefreshToken);
+
             await _refreshTokenRepository.AddAsync(newRefreshToken);
 
             var newJsonWebToken = _jwtTokenGenerator.GenerateToken(user, await _userManager.GetRolesAsync(user));
 
             await _unitOfWork.CompleteAsync();
 
-            return ServiceResult<LoginResponse>.Success(new LoginResponse(false, user.Id, newJsonWebToken, newRefreshToken.Token));
+            return ServiceResult<LoginResponse>.Success(new LoginResponse(false, user.Id, newJsonWebToken, plainTextRefreshToken));
         }
 
         public async Task<ServiceResult> RevokeAsync(string refreshToken)
         {
-            var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+            var hashedRefreshToken = _refreshTokenGenerator.HashToken(refreshToken);
+
+            var storedToken = await _refreshTokenRepository.GetByTokenAsync(hashedRefreshToken);
 
             if (storedToken is null || !storedToken.IsActive)
             {
@@ -141,11 +153,13 @@ namespace AuthService.Application.Services
 
             var refreshToken = _refreshTokenGenerator.GenerateToken(user.Id);
 
+            var plainTextRefreshToken = refreshToken.Token;
+
+            refreshToken.Token = _refreshTokenGenerator.HashToken(plainTextRefreshToken);
+
             await _refreshTokenRepository.AddAsync(refreshToken);
 
-            await _unitOfWork.CompleteAsync();
-
-            return new LoginResponse(false, user.Id, jsonWebToken, refreshToken.Token);
+            return new LoginResponse(false, user.Id, jsonWebToken, plainTextRefreshToken);
         }
     }
 }

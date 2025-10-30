@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
+using System.Text;
 using AuthService.Application.Interfaces;
 using AuthService.Domain.Entities;
 using Microsoft.Extensions.Configuration;
 
-namespace AuthService.Application.Helpers
+namespace AuthService.Infrastructure.Security
 {
     public class RefreshTokenGenerator(IConfiguration configuration): IRefreshTokenGenerator
     {
@@ -18,6 +19,15 @@ namespace AuthService.Application.Helpers
                 DateCreated = DateTime.UtcNow,
                 ExpiryDate = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["Jwt:RefreshTokenExpiresInDays"]))
             };
+        }
+
+        public string HashToken(string token)
+        {
+            byte[] tokenBytes = Encoding.UTF8.GetBytes(token);
+
+            byte[] hashBytes = SHA256.HashData(tokenBytes);
+
+            return Convert.ToBase64String(hashBytes);
         }
 
         private static string GenerateRandomTokenString()
