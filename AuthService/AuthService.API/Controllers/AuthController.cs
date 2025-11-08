@@ -2,15 +2,19 @@ using Microsoft.AspNetCore.Mvc;
 using AuthService.Application.Interfaces;
 using AuthService.Application.Contracts;
 using TwoFactorService.Application.Contracts;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace AuthService.API.Controllers
 {
     [ApiController]
     [Route("api/auth")]
     [Produces("application/json")]
-    public class AuthController(IAuthenticationService service, IConfiguration configuration) : ControllerBase
+    public class AuthController(IAuthenticationService service, IUserService userService, IConfiguration configuration) : ControllerBase
     {
         private readonly IAuthenticationService _authService = service;
+        private readonly IUserService _userService = userService;
         private readonly IConfiguration _configuration = configuration;
         private string RefreshTokenCookiePath => _configuration["Jwt:RefreshTokenCookiePath"]!;
         private string RefreshTokenCookieName => _configuration["Jwt:RefreshTokenCookieName"]!;
@@ -42,7 +46,36 @@ namespace AuthService.API.Controllers
                 return Unauthorized(result);
             }
 
-           return HandleAuthSuccess(result);
+            return HandleAuthSuccess(result);
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        [ProducesResponseType(typeof(ServiceResult<UserInfoResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> GetUserInfo()
+        {
+            Console.WriteLine(User.Claims.Count());
+            foreach (var user in User.Claims)
+            {
+                Console.WriteLine(user.ToString());
+            }
+            Console.WriteLine(JwtRegisteredClaimNames.Sub);
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(userId);
+            }
+
+            var result = await _userService.GetUserInfoAsync(userId);
+
+            if (!result.IsSuccess)
+            {
+                return NotFound(result);
+            }
+
+            return Ok(result);
         }
 
         [HttpPost("refresh")]

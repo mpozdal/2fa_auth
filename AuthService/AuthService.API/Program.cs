@@ -12,6 +12,7 @@ using AuthService.Infrastructure.Repositories;
 using AuthService.Infrastructure.Data;
 using MassTransit;
 using AuthService.Application.Consumers;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,25 +20,24 @@ builder.Services.AddSwaggerGen();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+builder.Services.AddDbContext<AuthDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+
 builder.Services.AddMassTransit(config => {
     config.AddConsumer<User2FAStatusConsumer>();
 
     config.UsingRabbitMq((context, cfg) => {
-
         cfg.Host(builder.Configuration.GetValue<string>("RabbitMq:Host"), "/", h =>
         {
             h.Username(builder.Configuration.GetValue<string>("RabbitMq:Username")!);
             h.Password(builder.Configuration.GetValue<string>("RabbitMq:Password")!);
         });
-
         cfg.ReceiveEndpoint("auth-service-events", e => {
             e.ConfigureConsumer<User2FAStatusConsumer>(context);
         });
     });
 });
-
-builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseNpgsql(connectionString));
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     {
@@ -49,7 +49,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     .AddDefaultTokenProviders();
 
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
-
+builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IRefreshTokenGenerator, RefreshTokenGenerator>();
 
@@ -60,32 +60,80 @@ builder.Services.AddControllers();
 
 builder.Services.AddHttpClient<ITwoFactorApiClient, TwoFactorApiClient>(client =>
 {
-    string? serviceUrl = builder.Configuration["ServiceUrls:TwoFactorService"];
 
+    string? serviceUrl = builder.Configuration["ServiceUrls:TwoFactorService"];
     if (string.IsNullOrEmpty(serviceUrl))
     {
         throw new InvalidOperationException("TwoFactorService URL not configured in appsettings.json");
     }
-
     client.BaseAddress = new Uri(serviceUrl);
     client.DefaultRequestHeaders.Add("Accept", "application/json");
 });
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Events.OnRedirectToLogin = context =>
     {
-        options.Authority = builder.Configuration["Jwt:Authority"];
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Task.CompletedTask;
+    };
+});
 
-        options.Audience = builder.Configuration["Jwt:Audience"];
-
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true
-        };
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Wprowadź 'Bearer' [spacja] a następnie swój token. \n\nPrzykład: 'Bearer 12345abcdef'"
     });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+
+
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!))
+    };
+});
 
 builder.Services.AddAuthorization();
 
@@ -100,7 +148,6 @@ if (app.Environment.IsDevelopment())
 app.MapSwagger();
 
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllers();

@@ -54,9 +54,7 @@ namespace TwoFactorService.Application.Services
 
             SetupCode setupInfo = tfa.GenerateSetupCode(issuerName, userId, secretKey, false);
 
-            string qrCodeBase64 = CodeQRGenerator.GenerateQrCodeAsBase64(setupInfo.QrCodeSetupImageUrl);
-
-            return ServiceResult<SetupResponse>.Success(new SetupResponse(userId, setupInfo.ManualEntryKey, qrCodeBase64));
+            return ServiceResult<SetupResponse>.Success(new SetupResponse(userId, setupInfo.ManualEntryKey, setupInfo.QrCodeSetupImageUrl));
         }
 
         public async Task<ServiceResult<SetupVerificationResponse>> VerifyAndEnableAsync(string userId, string code)
@@ -175,7 +173,7 @@ namespace TwoFactorService.Application.Services
 
             await _unitOfWork.CompleteAsync();
 
-            var @event = new User2FAEnabledEvent { UserId = userSetting.UserId };
+            var @event = new User2FADisabledEvent { UserId = userSetting.UserId };
 
             await _publishEndpoint.Publish(@event);
 
